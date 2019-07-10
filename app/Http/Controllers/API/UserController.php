@@ -6,6 +6,7 @@ use App\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use \Intervention\Image\Facades\Image;
 
 class UserController extends Controller
 {
@@ -14,6 +15,11 @@ class UserController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    public function __construct()
+    {
+        $this->middleware('auth:api');
+    }
+    
     public function index()
     {
         //
@@ -55,6 +61,46 @@ class UserController extends Controller
         //
     }
 
+    public function profile()
+    {
+        return auth('api')->user();
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = auth('api')->user();
+        $currPhoto = $user->photo;
+
+        $this->validate($request, [
+            'name'      =>  'required|string|max:150',
+            'email'     =>  'required|string|email|max:100|unique:users,email,'.$user->id,
+            'password'  =>  'sometimes|required|min:6',
+        ]);
+
+        if($request->photo != $currPhoto){
+            $name = time().'.'.
+                explode('/',
+                    explode(':',
+                        substr(
+                            $request->photo,
+                            0,
+                            strpos($request->photo,';')
+                        ))[1])[1];
+
+            Image::make($request->photo)->save(public_path('img/profile/').$name);
+
+            $request->merge(['photo' => $name]);
+        }
+
+        if (!empty($request->password)){
+            $request->merge(['password' => Hash::make($request['password'])]);
+        }
+
+        $user->update($request->all());
+        return ['message' => 'update succeed'];
+    }
+    
+    
     /**
      * Update the specified resource in storage.
      *
@@ -65,6 +111,17 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         //
+        $user = User::findOrFail($id);
+
+        $this->validate($request, [
+            'name'      =>  'required|string|max:150',
+            'email'     =>  'required|string|email|unique:users,email,'.$user->id,
+            'password'  =>  'sometimes|min:6',
+        ]);
+
+        $user->update($request->all());
+
+        return ['message' => 'user update'.$id];
     }
 
     /**

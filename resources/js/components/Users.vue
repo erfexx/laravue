@@ -8,7 +8,7 @@
                             <h3 class="card-title">Users Table</h3>
 
                             <div class="card-tools">
-                                <button class="btn btn-success" data-toggle="modal" data-target="#addNew">
+                                <button class="btn btn-success" @click="newModal">
                                     <i class="fas fa-user-plus fa-fw"></i>
                                     Add New
                                 </button>
@@ -35,7 +35,7 @@
                                     <td><span class="tag tag-success">{{user.type | upText}}</span></td>
                                     <td><span class="tag tag-success">{{user.created_at | myDate}}</span></td>
                                     <td>
-                                        <a href="#" class="text-blue">
+                                        <a href="#" class="text-blue" @click="editModal(user)">
                                             <i class="fa fa-edit"></i>
                                         </a>
 
@@ -66,12 +66,13 @@
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="addNewUserTitle">Add New User</h5>
+                        <h5 v-show="!editmode" class="modal-title" id="addNewUserTitle">Add New User</h5>
+                        <h5 v-show="editmode" class="modal-title" id="updateUserTitle">Update User</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <form @submit.prevent="createUser">
+                    <form @submit.prevent="editmode ? updateUser() : createUser()">
                         <div class="modal-body">
                             <div class="form-group">
                                 <label>Name</label>
@@ -120,7 +121,8 @@
 
                         <div class="modal-footer">
                             <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-success">Save</button>
+                            <button v-show="!editmode" type="submit" class="btn btn-primary">Save User</button>
+                            <button v-show="editmode" type="submit" class="btn btn-success">Update User</button>
                         </div>
                     </form>
                 </div>
@@ -134,8 +136,10 @@
     export default {
         data() {
             return {
+                editmode: false,
                 users: {},
                 form: new Form({
+                    id: '',
                     name: '',
                     email: '',
                     password: '',
@@ -146,6 +150,41 @@
             }
         },
         methods: {
+            newModal(){
+                this.editmode = false;
+                this.form.reset();
+                $('#addNew').modal('show');
+            },
+            editModal(user){
+                this.editmode = true;
+                this.form.reset();
+                $('#addNew').modal('show');
+                this.form.fill(user);
+            },
+            updateUser(id){
+                // console.log('dadada');
+                this.$Progress.start();
+                this.form.put('api/user/'+this.form.id).then(() => {
+                    Fire.$emit('AfterCreate');
+
+                    $('#addNew').modal('hide');
+                    toast.fire({
+                        type: 'success',
+                        title: 'User updated successfully'
+                    });
+                    this.$Progress.finish();
+                }).catch(() => {
+                    console.log('wow');
+
+                    $('#addNew').modal('hide');
+                    toast.fire({
+                        type: 'error',
+                        title: 'Something went wrong'
+                    });
+
+                    this.$Progress.fail();
+                });
+            },
             deleteUser(id){
                 swal.fire({
                     title: 'Are you sure?',
